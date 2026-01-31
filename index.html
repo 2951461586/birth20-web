@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>20岁生日快乐！</title>
+    <!-- 🔥 站酷快乐体 -->
+    <link href="https://fonts.googleapis.com/css2?family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        /* --- 全局样式 --- */
+        :root {
+            --bg-color: #fffafc;
+            --primary-color: #ff8eab;
+            --text-color: #5d4037;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'ZCOOL KuaiLe', "Mady", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
+
+        /* --- 页面基础 --- */
+        .page {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.6s ease;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(100%) scale(0.9);
+            background-image: radial-gradient(#ffeef2 20%, transparent 20%);
+            background-size: 20px 20px;
+            z-index: 10;
+        }
+
+        .page.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0) scale(1);
+        }
+
+        .page.prev {
+            transform: translateY(-100%) scale(0.9);
+            opacity: 0;
+        }
+
+        /* --- 组件样式 --- */
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+            text-shadow: 2px 2px 0px #fff;
+            z-index: 20;
+        }
+
+        p {
+            font-size: 1rem;
+            line-height: 1.6;
+            margin: 5px 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 15px;
+            border-radius: 10px;
+            z-index: 20;
+            position: relative;
+        }
+
+        .gif-box {
+            width: 180px;
+            height: 180px;
+            margin: 10px auto;
+            border-radius: 50%;
+            border: 4px solid #fff;
+            box-shadow: 0 8px 15px rgba(255, 142, 171, 0.3);
+            overflow: hidden;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+        }
+
+        .gif-box img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+        }
+
+        .deco-img {
+            position: absolute;
+            width: 60px;
+            opacity: 0.9;
+            z-index: 5;
+            animation: floatDeco 3s ease-in-out infinite;
+        }
+
+        @keyframes floatDeco {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* --- 🎞️ 照片墙容器 --- */
+        .film-container {
+            width: 100%;
+            height: 350px;
+            /* 给足够空间做心形 */
+            margin: 20px 0;
+            position: relative;
+            /* 为绝对定位做准备 */
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 20;
+            /* overflow: hidden;  去掉hidden以便心形展示 */
+        }
+
+        .film-track {
+            display: flex;
+            gap: 15px;
+            width: max-content;
+            transition: opacity 0.5s;
+        }
+
+        .film-item {
+            width: 100px;
+            height: 125px;
+            /* 稍微调小一点适配心形 */
+            background: #fff;
+            padding: 4px 4px 20px 4px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transform: rotate(var(--rot));
+            flex-shrink: 0;
+            border-radius: 4px;
+            transition: all 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            /* 平滑过渡 */
+            cursor: pointer;
+            position: relative;
+            /* 默认相对定位 */
+        }
+
+        /* 当形成心形时，应用绝对定位 */
+        .film-item.heart-mode {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            /* 初始中心点 */
+            margin-top: -62px;
+            margin-left: -50px;
+            /* 居中修正 */
+            box-shadow: 0 0 15px rgba(255, 142, 171, 0.6);
+            z-index: 100;
+        }
+
+        .film-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 2px;
+        }
+
+        @keyframes scrollLeft {
+            0% {
+                transform: translateX(0);
+            }
+
+            100% {
+                transform: translateX(-50%);
+            }
+        }
+
+        @keyframes scrollRight {
+            0% {
+                transform: translateX(-50%);
+            }
+
+            100% {
+                transform: translateX(0);
+            }
+        }
+
+        /* --- 🔍 图片查看器 (Lightbox) --- */
+        .lightbox-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+            backdrop-filter: blur(5px);
+        }
+
+        .lightbox-overlay.open {
+            display: flex;
+            opacity: 1;
+        }
+
+        .lightbox-content {
+            width: 80%;
+            max-height: 60%;
+            border: 6px solid #fff;
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(255, 142, 171, 0.5);
+            transform: scale(0.8);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 2005;
+            object-fit: contain;
+            position: relative;
+        }
+
+        .lightbox-overlay.open .lightbox-content {
+            transform: scale(1);
+        }
+
+        /* 🔥 新版：手写悬浮文字样式 */
+        .floating-text-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .handwritten-msg {
+            position: absolute;
+            color: #fff;
+            font-size: 1.4rem;
+            opacity: 0;
+            white-space: nowrap;
+            text-shadow: 2px 2px 4px rgba(255, 142, 171, 0.8);
+            font-weight: bold;
+            animation: appearFloat 3s ease-out forwards infinite alternate;
+        }
+
+        @keyframes appearFloat {
+            0% {
+                opacity: 0;
+                transform: scale(0.8) translateY(10px) rotate(var(--r));
+            }
+
+            20% {
+                opacity: 1;
+                transform: scale(1.1) translateY(0) rotate(var(--r));
+            }
+
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(-10px) rotate(var(--r));
+            }
+        }
+
+        /* --- 交互组件 --- */
+        .btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 1.1rem;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(255, 142, 171, 0.4);
+            animation: bounce 2s infinite;
+            margin-top: 10px;
+            z-index: 30;
+            transition: transform 0.3s;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .next-arrow {
+            position: absolute;
+            bottom: 25px;
+            width: 30px;
+            height: 30px;
+            border-bottom: 4px solid var(--primary-color);
+            border-right: 4px solid var(--primary-color);
+            transform: rotate(45deg);
+            animation: flash 1.5s infinite;
+            cursor: pointer;
+            z-index: 30;
+        }
+
+        .music-control {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 35px;
+            height: 35px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--primary-color);
+            cursor: pointer;
+        }
+
+        .music-control.playing {
+            animation: spin 4s linear infinite;
+        }
+
+        /* --- 弹窗组件 --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+            opacity: 1;
+        }
+
+        .modal-box {
+            width: 80%;
+            max-width: 320px;
+            background: #fff;
+            border-radius: 20px;
+            padding: 30px 20px;
+            text-align: center;
+            border: 4px solid var(--primary-color);
+            box-shadow: 0 10px 25px rgba(255, 142, 171, 0.5);
+            transform: scale(0.7);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.open .modal-box {
+            transform: scale(1);
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        @keyframes flash {
+            0% {
+                opacity: 0;
+                transform: rotate(45deg) translate(-5px, -5px);
+            }
+
+            50% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0;
+                transform: rotate(45deg) translate(5px, 5px);
+            }
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="music-control" id="bgmBtn">🎵</div>
+    <audio id="bgm" src="./mp3/bgm.mp3" loop></audio>
+    <audio id="voice" src="./mp3/birthday_voice.mp3"></audio>
+    <canvas id="canvas-container"></canvas>
+
+    <!-- ================= 页面 1: 封面 ================= -->
+    <section class="page active" id="page1">
+        <img src="./img/pd-image1.png" class="deco-img" style="top: 10%; left: 10%;">
+        <img src="./img/pd-image2.png" class="deco-img" style="bottom: 15%; right: 10%;">
+        <div class="gif-box"><img src="./gif/gif1.gif"></div>
+        <h1>✨ 生日快乐 ✨</h1>
+        <p>To: 亲爱的小明</p>
+                <p style="font-size: 0.9rem; margin-top: 10px;">
+            你已经来到这个地球<br>
+            第 <span class="stats-num" id="daysCount">7305</span> 天<br>
+            第 <span class="stats-num" id="hoursCount">175320</span> 小时<br>
+            这是专属于你的魔法时刻<br>准备好了吗？
+        </p>
+        <button class="btn" onclick="startJourney()">🎁 开启惊喜</button>
+    </section>
+
+    <!-- ================= 页面 2: 录音 ================= -->
+    <section class="page" id="page2">
+        <div class="gif-box"><img src="./gif/gif2.gif"></div>
+        <h1>听我说...</h1>
+        <p>有些话躲在玩偶里悄悄告诉你</p>
+        <div style="background:#fff; padding:15px; border-radius:20px; border:2px dashed var(--primary-color); cursor:pointer;"
+            onclick="playVoice()">
+            <span class="voice-icon">▶️ 点我播放</span>
+        </div>
+        <div class="next-arrow" onclick="nextPage(2)"></div>
+    </section>
+
+    <!-- ================= 页面 3: 祝福 ================= -->
+    <section class="page" id="page3">
+        <div class="gif-box"><img src="./gif/gif3.gif"></div>
+        <h1>愿望都实现</h1>
+        <p>祝你在20岁的人生旷野里<br>永远像Chiikawa一样无忧无虑</p>
+        <div class="next-arrow" onclick="nextPage(3)"></div>
+    </section>
+
+    <!-- ================= 页面 4: 照片墙 (准备变身爱心) ================= -->
+    <section class="page" id="page4">
+        <img src="./gif/gif4.gif" style="width: 80px; margin-bottom: -10px;">
+        <h1 id="photoTitle">我们的点滴</h1>
+
+        <div class="film-container" id="photoWall">
+            <div class="film-track" id="track1" style="animation: scrollLeft 20s linear infinite;">
+                <!-- 照片 ID 用于定位 -->
+                <div class="film-item" style="--rot:-2deg"><img src="./img/we1.jpg" onclick="openPhoto(this.src)"></div>
+                <div class="film-item" style="--rot:1deg"><img src="./img/we2.jpg" onclick="openPhoto(this.src)"></div>
+                <div class="film-item" style="--rot:-1deg"><img src="./img/we3.jpg" onclick="openPhoto(this.src)"></div>
+                <div class="film-item" style="--rot:3deg"><img src="./img/we4.jpg" onclick="openPhoto(this.src)"></div>
+                <div class="film-item" style="--rot:-2deg"><img src="./img/we5.jpg" onclick="openPhoto(this.src)"></div>
+                <div class="film-item" style="--rot:2deg"><img src="./img/we6.jpg" onclick="openPhoto(this.src)"></div>
+                <div class="film-item" style="--rot:1deg"><img src="./img/we7.jpg" onclick="openPhoto(this.src)"></div>
+                <div class="film-item" style="--rot:-1deg"><img src="./img/we8.jpg" onclick="openPhoto(this.src)"></div>
+            </div>
+            <div class="film-track" id="track2" style="animation: scrollRight 25s linear infinite;">
+                <div class="film-item" style="--rot:2deg"><img src="./img/we9.jpg" onclick="openPhoto(this.src)"></div>
+                <div class="film-item" style="--rot:-1deg"><img src="./img/we10.jpg" onclick="openPhoto(this.src)">
+                </div>
+                <div class="film-item" style="--rot:3deg"><img src="./img/we11.jpg" onclick="openPhoto(this.src)"></div>
+                <div class="film-item" style="--rot:-2deg"><img src="./img/we12.jpg" onclick="openPhoto(this.src)">
+                </div>
+                <div class="film-item" style="--rot:1deg"><img src="./img/we1.jpg" onclick="openPhoto(this.src)"></div>
+                <div class="film-item" style="--rot:-3deg"><img src="./img/we2.jpg" onclick="openPhoto(this.src)"></div>
+                <div class="film-item" style="--rot:2deg"><img src="./img/we3.jpg" onclick="openPhoto(this.src)"></div>
+                <div class="film-item" style="--rot:-1deg"><img src="./img/we4.jpg" onclick="openPhoto(this.src)"></div>
+            </div>
+        </div>
+
+        <button class="btn" id="heartBtn" onclick="formHeartShape()">🎂 爱你哟</button>
+    </section>
+
+    <!-- ================= 🔍 图片查看器 (手写悬浮版) ================= -->
+    <div class="lightbox-overlay" id="imgLightbox" onclick="closePhoto()">
+        <!-- 悬浮文字容器 -->
+        <div class="floating-text-container" id="floatTextContainer"></div>
+
+        <!-- 中间图片 -->
+        <img id="lightboxImg" class="lightbox-content" src="">
+
+        <div style="position:absolute; bottom:30px; color:#fff; opacity:0.6; font-size:0.9rem;">
+            点击任意处关闭
+        </div>
+    </div>
+
+    <!-- ================= 弹窗组件 ================= -->
+    <div class="modal-overlay" id="loveModal">
+        <div class="modal-box">
+            <h2>🎉 生日快乐！</h2>
+            <div style="margin:20px 0; line-height:1.6;">
+                恭喜小明又长大一岁啦！<br>
+                未来的日子里<br>
+                我也想一直陪在你身边<br>
+                希望你少一点焦虑<br>
+                多一点开心！<br>
+                ❤️
+            </div>
+            <button class="btn" onclick="closeModal()">收到啦</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 核心配置 ---
+        const loveMessages = [
+            "小明生日快乐！🎂", "最爱小明了 ❤️", "超级无敌可爱",
+            "要做快乐的小明", "想一直抱着你", "你是我的小太阳 ☀️",
+            "往后余生请多指教", "闪闪发光 ✨", "每天都想你",
+            "今天的风很甜", "陪你奇奇怪怪", "陪你可可爱爱",
+            "Love You Forever", "(づ｡◕‿‿◕｡)づ"
+        ];
+
+        function startJourney() {
+            const bgm = document.getElementById('bgm');
+            bgm.volume = 0.5;
+            bgm.play().catch(() => { }); // 处理自动播放限制
+            document.getElementById('bgmBtn').classList.add('playing');
+            if(navigator.vibrate) navigator.vibrate(50);
+            nextPage(1);
+        }
+
+        // BGM 按钮控制
+        document.getElementById('bgmBtn').addEventListener('click', function () {
+            const bgm = document.getElementById('bgm');
+            if (bgm.paused) { bgm.play(); this.classList.add('playing'); }
+            else { bgm.pause(); this.classList.remove('playing'); }
+        });
+
+        function nextPage(c) {
+            document.getElementById(`page${c}`).classList.replace('active', 'prev');
+            document.getElementById(`page${c + 1}`).classList.add('active');
+        }
+
+        function playVoice() {
+            const v = document.getElementById('voice');
+            const b = document.getElementById('bgm');
+            const oldVol = b.volume;
+            b.volume = 0.1;
+            v.play();
+            v.onended = () => { b.volume = oldVol; };
+        }
+
+        // --- 🔍 升级版：手写悬浮查看器 ---
+        function openPhoto(src) {
+            const lb = document.getElementById('imgLightbox');
+            const container = document.getElementById('floatTextContainer');
+
+            document.getElementById('lightboxImg').src = src;
+            container.innerHTML = ''; // 清空旧文字
+
+            // 随机生成 6-8 个悬浮文字
+            const count = 6 + Math.floor(Math.random() * 3);
+            for (let i = 0; i < count; i++) {
+                const span = document.createElement('span');
+                span.className = 'handwritten-msg';
+                span.innerText = loveMessages[Math.floor(Math.random() * loveMessages.length)];
+
+                // 随机位置 (避开中心区域大致范围)
+                let top, left;
+                if (Math.random() > 0.5) {
+                    top = Math.random() * 30 + '%'; // 上方区域
+                } else {
+                    top = (70 + Math.random() * 20) + '%'; // 下方区域
+                }
+                left = Math.random() * 80 + 10 + '%';
+
+                // 随机倾斜角度
+                const rot = (Math.random() * 30 - 15) + 'deg';
+                // 随机动画延迟
+                const delay = Math.random() * 2 + 's';
+                // 随机字体大小差异
+                const sizeScale = 0.8 + Math.random() * 0.5;
+
+                span.style.top = top;
+                span.style.left = left;
+                span.style.setProperty('--r', rot);
+                span.style.animationDelay = delay;
+                span.style.fontSize = (1.4 * sizeScale) + 'rem';
+
+                container.appendChild(span);
+            }
+
+            lb.style.display = 'flex';
+            setTimeout(() => lb.classList.add('open'), 10);
+        }
+
+        function closePhoto() {
+            const lb = document.getElementById('imgLightbox');
+            lb.classList.remove('open');
+            setTimeout(() => lb.style.display = 'none', 300);
+        }
+
+        // --- ❤️ 核心逻辑：照片聚合成爱心 ---
+        function formHeartShape() {
+            const wall = document.getElementById('photoWall');
+            const btn = document.getElementById('heartBtn');
+            const tracks = document.querySelectorAll('.film-track');
+
+            // 1. 停止滚动动画，准备移动 DOM
+            tracks.forEach(t => t.style.animationPlayState = 'paused');
+            btn.style.display = 'none'; // 隐藏按钮
+            document.getElementById('photoTitle').innerText = "❤️ 永远爱你 ❤️";
+
+            // 2. 收集所有图片元素
+            const items = document.querySelectorAll('.film-item');
+            const total = items.length;
+
+            // 3. 将图片从 track 中取出，直接放入 wall 容器，以便统一绝对定位
+            // 注意：这会打乱 DOM 结构，但为了动画效果是必须的
+            const frag = document.createDocumentFragment();
+            items.forEach(item => {
+                // 克隆节点或直接移动 (这里直接移动)
+                // 先计算当前相对于视口的位置，保持视觉连贯性(可选，这里直接飞聚更震撼)
+                item.classList.add('heart-mode');
+                frag.appendChild(item);
+            });
+
+            // 清空 track，只留 item
+            wall.innerHTML = '';
+            wall.appendChild(frag);
+
+            // 4. 计算爱心坐标公式
+            // x = 16sin^3(t)
+            // y = 13cos(t) - 5cos(2t) - 2cos(3t) - cos(4t)
+            const scale = 7; // 缩放系数
+
+            setTimeout(() => {
+                items.forEach((item, index) => {
+                    // t 从 0 到 2PI
+                    const t = (index / total) * Math.PI * 2;
+                    const x = 16 * Math.pow(Math.sin(t), 3);
+                    const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+
+                    // 应用坐标 (偏移中心)
+                    // x * scale px, y * scale px
+                    item.style.transform = `translate(${x * scale}px, ${y * scale}px) rotate(${Math.random() * 20 - 10}deg)`;
+                    item.style.zIndex = index + 10;
+                });
+            }, 50);
+            
+            if(navigator.vibrate) navigator.vibrate([100, 50, 100]);
+            
+            // 5. 延迟弹出祝福语
+            setTimeout(() => {
+                showModal();
+            }, 1800);
+        }
+
+        function showModal() {
+            const m = document.getElementById('loveModal');
+            m.style.display = 'flex';
+            setTimeout(() => m.classList.add('open'), 10);
+
+            // 新增：彩带特效
+            var duration = 3000;
+            var end = Date.now() + duration;
+            (function frame() {
+                confetti({
+                    particleCount: 5,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 },
+                    colors: ['#ff8eab', '#ffffff', '#ffd700'] // 配合你的主题色
+                });
+                confetti({
+                    particleCount: 5,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 },
+                    colors: ['#ff8eab', '#ffffff', '#ffd700']
+                });
+                if (Date.now() < end) {
+                    requestAnimationFrame(frame);
+                }
+            }());
+        }
+
+        function closeModal() {
+            const m = document.getElementById('loveModal');
+            m.classList.remove('open');
+            setTimeout(() => m.style.display = 'none', 300);
+        }
+
+        // --- 飘落特效 ---
+        const canvas = document.getElementById('canvas-container');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        const particles = [];
+        class P {
+            constructor() { this.r(); }
+            r() {
+                this.x = Math.random() * canvas.width; this.y = -20;
+                this.s = Math.random() * 20 + 10; this.v = Math.random() * 2 + 1;
+                this.t = ['✨', '❤️', '⭐', '🎵'][Math.floor(Math.random() * 4)];
+            }
+            u() { this.y += this.v; if (this.y > canvas.height) this.r(); }
+            d() { ctx.font = this.s + 'px Arial'; ctx.fillText(this.t, this.x, this.y); }
+        }
+        for (let i = 0; i < 30; i++) particles.push(new P());
+        function anim() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'rgba(255,142,171,0.5)';
+            particles.forEach(p => { p.u(); p.d(); });
+            requestAnimationFrame(anim);
+        }
+        anim();
+    </script>
+</body>
+
+</html>
